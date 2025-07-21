@@ -1,0 +1,14 @@
+# Ignorar entorno virtual
+venv/
+# Ignorar configuraciones locales
+.env
+*.env
+# Archivos de logs y temporales
+*.log
+__pycache__/
+*.py[cod]
+.DS_Store
+# Archivos del sistema
+*.swp
+# Ignorar navegadores descargados por Playwright
+ms-playwright/
