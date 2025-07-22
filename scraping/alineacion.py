@@ -1,5 +1,6 @@
-from playwright.async_api import Page
+from playwright.sync_api import Page
 from utils.logger import logger
+import re
 
 POSICIONES = {
     "1": "POR",
@@ -9,41 +10,89 @@ POSICIONES = {
 }
 
 def ir_a_equipo(page: Page) -> None:
-    """Navega hasta la página de 'Equipo' haciendo clic en el icono correspondiente de la cabecera."""
     try:
-        page.wait_for_selector('button[data-sw="team"]', timeout=5000)
-        page.click('button[data-sw="team"]')
-        page.wait_for_selector(".team__lineup", timeout=5000)
+        page.wait_for_selector('li[data-pag="team"] a.navbar-switch-tab', timeout=5000)
+        page.click('li[data-pag="team"] a.navbar-switch-tab')
+        page.wait_for_selector(".team__lineup, ul.player-list.player-list--secondary.list-team", timeout=5000)
         logger.info("✅ Página de equipo cargada correctamente")
     except Exception as e:
         logger.warning(f"⚠️ No se pudo acceder a la página de equipo: {e}")
 
 
-def extraer_alineacion(page: Page) -> list[dict]:
-    """Extrae los jugadores alineados en el equipo titular."""
+def extraer_alineacion_sync(page: Page) -> list[dict]:
     ir_a_equipo(page)
-
     jugadores = []
     elementos = page.query_selector_all("button.lineup-player")
-
     for el in elementos:
-        nombre = el.query_selector_eval(".name", "el => el.textContent.trim()")
-        posicion = el.get_attribute("data-position")
-        id_jugador = el.get_attribute("data-id_player")
-        puntos = el.query_selector_eval(".points", "el => el.textContent.trim()")
-        avatar = el.query_selector_eval(".player-avatar img", "el => el.src")
-        equipo_img = el.query_selector_eval(".team-logo", "el => el.src")
-
-        equipo_id = equipo_img.split("/teams/")[-1].split(".")[0]
-
-        jugadores.append({
-            "nombre": nombre,
-            "posicion": POSICIONES.get(posicion, posicion),
-            "id_jugador": int(id_jugador),
-            "puntos": int(puntos),
-            "equipo_id": int(equipo_id),
-            "avatar": avatar
-        })
-
+        try:
+            nombre = el.query_selector(".name").text_content().strip()
+            posicion = el.get_attribute("data-position")
+            id_jugador = el.get_attribute("data-id_player")
+            puntos = el.query_selector(".points").text_content().strip()
+            avatar = el.query_selector(".player-avatar img").get_attribute("src")
+            equipo_img = el.query_selector(".team-logo").get_attribute("src")
+            equipo_id = int(equipo_img.split("/teams/")[-1].split(".")[0])
+            jugadores.append({
+                "nombre": nombre,
+                "posicion": POSICIONES.get(posicion, posicion),
+                "id_jugador": int(id_jugador),
+                "puntos": int(puntos),
+                "equipo_id": equipo_id,
+                "avatar": avatar
+            })
+        except Exception as inner:
+            logger.warning(f"⚠️ Error procesando un jugador alineado: {inner}")
     logger.info(f"✅ Extraídos {len(jugadores)} jugadores alineados")
     return jugadores
+
+
+def extraer_plantilla_sync(page: Page) -> list[dict]:
+    ir_a_equipo(page)
+    plantilla = []
+    selector = 'ul.player-list.player-list--secondary.list-team li'
+    try:
+        page.wait_for_selector(selector, timeout=5000)
+        items = page.query_selector_all(selector)
+        for li in items:
+            try:
+                raw_id = li.get_attribute('id')
+                id_jugador = int(raw_id.split('-')[-1])
+                a = li.query_selector('a.player')
+                nombre = a.get_attribute('data-title').strip()
+
+                pos = li.query_selector('.player-position').get_attribute('data-position')
+                posicion = POSICIONES.get(pos, pos)
+
+                raw_valor = li.query_selector('.underName').text_content()
+                match = re.search(r'[\d.,]+', raw_valor)
+                if match:
+                    valor_str = match.group(0).replace('.', '').replace(',', '.')
+                    valor = float(valor_str)
+                else:
+                    valor = None
+
+                avg_text = li.query_selector('.streak-wrapper .avg').text_content().strip()
+                promedio = float(avg_text.replace(',', '.'))
+
+                rival_img = li.query_selector('.rival img').get_attribute('src')
+                equipo_rival = int(rival_img.split('/teams/')[-1].split('.')[0])
+
+                avatar = li.query_selector('.player-avatar img').get_attribute('src')
+                link = a.get_attribute('href')
+
+                plantilla.append({
+                    'id_jugador': id_jugador,
+                    'nombre': nombre,
+                    'posicion': posicion,
+                    'valor': valor,
+                    'promedio': promedio,
+                    'equipo_rival_id': equipo_rival,
+                    'avatar': avatar,
+                    'link': link
+                })
+            except Exception as ex:
+                logger.warning(f"⚠️ Error procesando jugador de plantilla: {ex}")
+        logger.info(f"✅ Extraída plantilla completa: {len(plantilla)} jugadores")
+    except Exception as e:
+        logger.error(f"❌ No se encontró la lista de plantilla: {e}")
+    return plantilla
