@@ -1,21 +1,18 @@
 # ⚽ MISTERSNIPERBOT
 
-Proyecto Python moderno para automatizar el login y scraping del saldo en [https://mister.mundodeportivo.com](https://mister.mundodeportivo.com), usando **Playwright** y exponiendo un **endpoint HTTP (`/saldo`)** con **FastAPI**.
+Proyecto en Python moderno que automatiza el acceso y scraping de información de [https://mister.mundodeportivo.com](https://mister.mundodeportivo.com), utilizando **Playwright** para navegación automatizada y **FastAPI** para exponer una API web.
 
 ---
 
 ## 🚀 ¿Qué hace?
 
-- Hace login automático con tu cuenta del Míster
-- Extrae tu saldo actual (ej: `17,2M`)
-- Devuelve un JSON con:
-  - Tu email
-  - Saldo numérico en millones (float)
-  - Texto original del saldo
-- Expone todo a través de un servidor FastAPI (`/saldo`)
-- Puede ejecutarse:
-  - En local (Windows, con navegador visible o headless)
-  - En Docker (Linux o Windows, headless y montado en caliente)
+- Realiza login automático (o reutiliza cookies de sesión si están activas)
+- Extrae:
+  - Saldo actual del usuario (ej: `17,2M`)
+  - Alineación actual de jugadores
+  - Plantilla completa, incluyendo nombre completo y rival
+- Devuelve una respuesta estructurada en JSON
+- Expone toda la información a través de un servidor FastAPI con múltiples endpoints
 
 ---
 
@@ -24,24 +21,31 @@ Proyecto Python moderno para automatizar el login y scraping del saldo en [https
 ```
 MISTERSNIPERBOT/
 ├── scraping/
-│   ├── browser.py
-│   ├── login.py
-│   ├── saldo.py
-│   └── useragent.py
+│   ├── browser.py              ← Inicializa navegador con Playwright
+│   ├── login.py                ← Login tradicional con email/password
+│   ├── saldo.py                ← Extrae saldo del usuario
+│   ├── alineacion.py           ← Extrae alineación y plantilla
+│   ├── mercado.py              ← Extrae mercado de fichajes
+│   ├── sofascore.py            ← Extrae últimos puntos de un jugador
+│   └── useragent.py            ← Genera user-agent aleatorio
 │
 ├── utils/
-│   └── logger.py
+│   ├── logger.py               ← Logger centralizado
+│   ├── normalizador.py         ← Función para normalizar nombres completos
+│   └── session.py              ← Gestión de cookies persistentes (login automático)
 │
 ├── api/
-│   └── main.py             ← Servidor FastAPI con endpoint `/saldo`
+│   └── main.py                 ← Servidor FastAPI con endpoints públicos
 │
-├── .env                    ← Tus credenciales
+├── session/
+│   └── cookies.json            ← Cookies persistentes entre sesiones
+│
+├── .env                        ← Configuración privada (email, password)
 ├── requirements.txt
 ├── Dockerfile
 ├── setup.sh
 ├── start.bat
-├── main.py                 ← (opcional, ejecución directa)
-└── README.md               ← Este documento
+└── README.md
 ```
 
 ---
@@ -68,31 +72,43 @@ playwright install
 uvicorn api.main:app --reload
 ```
 
-### 4. Consultar saldo
+### 4. Consultar datos
 
-Abre en tu navegador o desde Postman:
-
-```
-http://localhost:8000/saldo
+```http
+GET http://localhost:8000/saldo
+GET http://localhost:8000/mercado
+GET http://localhost:8000/puntos?nombre=raul-garcia-de-haro
 ```
 
 ---
 
 ## 🐳 Ejecución con Docker (modo recomendado)
 
-### 1. Construir imagen (solo una vez)
+### 1. Construir imagen
 
 ```bash
 docker build -t misterscraper .
 ```
 
-### 2. Ejecutar contenedor con código en caliente
+### 2. Ejecutar contenedor con hot-reload de código
 
 ```bash
 docker run --env-file .env -p 8000:8000 -v %cd%:/app misterscraper
 ```
 
-✅ Así puedes editar archivos `.py` desde Windows y el contenedor los usa **sin tener que reconstruir la imagen**.
+✅ Así puedes editar archivos `.py` desde Windows y el contenedor los usa sin reconstrucción.
+
+---
+
+## 🔐 Archivo `.env`
+
+Configura tus credenciales:
+
+```
+EMAIL=tuusuario@correo.com
+PASSWORD=tucontraseña
+HEADLESS=true
+```
 
 ---
 
@@ -108,61 +124,15 @@ GET http://localhost:8000/saldo
 {
   "usuario": "tuemail@dominio.com",
   "saldo_millones": 17.2,
-  "texto_original": "17,2M"
+  "texto_original": "17,2M",
+  "alineacion": [...],
+  "plantilla": [...]
 }
 ```
 
 ---
 
-## 🔐 Archivo `.env`
-
-Configura tus credenciales:
-
-```
-EMAIL=tuusuario@correo.com
-PASSWORD=tucontraseña
-HEADLESS=true
-```
-
-> Si estás en Windows y quieres ver el navegador, pon `HEADLESS=false`
-
----
-
-## 🔇 Silencio a errores basura
-
-Este proyecto **filtra permanentemente** los errores molestos de Windows/asyncio como:
-
-- `RuntimeError: Event loop is closed`
-- `ValueError: I/O operation on closed pipe`
-
-Ya no te volverán a tocar los huevos.
-
----
-
-## ✅ Tecnologías usadas
-
-| Tecnología     | Uso                                    |
-|----------------|----------------------------------------|
-| Playwright     | Automatización de navegador (login + scraping) |
-| FastAPI        | Servidor web ultrarrápido para exponer `/saldo` |
-| Uvicorn        | Servidor ASGI moderno para FastAPI     |
-| Fake UserAgent | Rotación de user-agents para no ser detectado |
-| Python-dotenv  | Carga de credenciales desde `.env`     |
-| Docker         | Ejecución portable y aislada           |
-
----
-
-## 🧠 Posibles mejoras futuras
-
-- Scraping del mercado de fichajes
-- Scraping de alineación y puntos por jornada
-- Envío de alertas por Telegram
-- Panel web para visualizar estadísticas
-- Scheduling con cron o Celery
-
----
 
 ## 🧼 Autor
 
-Bot creado y mantenido con odio por **Yoguiito**.  
-No se aceptan sugerencias blanditas. Solo mejoras reales.
+Proyecto desarrollado y mantenido por **Raúl Muñoz**.

@@ -23,7 +23,7 @@ playwright install
 
 REM Iniciar servidor FastAPI
 echo 🚀 Levantando servidor API en http://localhost:8000 ...
-uvicorn main:app --reload
+uvicorn api.main:app --reload
 
 echo.
 echo ✅ Servidor finalizado.

@@ -1,5 +1,6 @@
 from playwright.sync_api import Page
 from utils.logger import logger
+from utils.nombres import normalizar_nombre
 import re
 
 POSICIONES = {
@@ -17,7 +18,6 @@ def ir_a_equipo(page: Page) -> None:
         logger.info("✅ Página de equipo cargada correctamente")
     except Exception as e:
         logger.warning(f"⚠️ No se pudo acceder a la página de equipo: {e}")
-
 
 def extraer_alineacion_sync(page: Page) -> list[dict]:
     ir_a_equipo(page)
@@ -45,7 +45,6 @@ def extraer_alineacion_sync(page: Page) -> list[dict]:
     logger.info(f"✅ Extraídos {len(jugadores)} jugadores alineados")
     return jugadores
 
-
 def extraer_plantilla_sync(page: Page) -> list[dict]:
     ir_a_equipo(page)
     plantilla = []
@@ -57,8 +56,15 @@ def extraer_plantilla_sync(page: Page) -> list[dict]:
             try:
                 raw_id = li.get_attribute('id')
                 id_jugador = int(raw_id.split('-')[-1])
+
                 a = li.query_selector('a.player')
-                nombre = a.get_attribute('data-title').strip()
+                link = a.get_attribute('href')
+
+                nombre_raw = link.split('/')[-1].replace('-', ' ').title()
+                if '.' in nombre_raw.split(' ')[0]:
+                    nombre = normalizar_nombre(nombre_raw, link)
+                else:
+                    nombre = nombre_raw
 
                 pos = li.query_selector('.player-position').get_attribute('data-position')
                 posicion = POSICIONES.get(pos, pos)
@@ -74,11 +80,10 @@ def extraer_plantilla_sync(page: Page) -> list[dict]:
                 avg_text = li.query_selector('.streak-wrapper .avg').text_content().strip()
                 promedio = float(avg_text.replace(',', '.'))
 
-                rival_img = li.query_selector('.rival img').get_attribute('src')
-                equipo_rival = int(rival_img.split('/teams/')[-1].split('.')[0])
+                rival_img = li.query_selector('.rival img')
+                equipo_rival = int(rival_img.get_attribute('src').split('/teams/')[-1].split('.')[0]) if rival_img else None
 
                 avatar = li.query_selector('.player-avatar img').get_attribute('src')
-                link = a.get_attribute('href')
 
                 plantilla.append({
                     'id_jugador': id_jugador,

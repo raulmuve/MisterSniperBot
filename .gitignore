@@ -12,3 +12,5 @@ __pycache__/
 *.swp
 # Ignorar navegadores descargados por Playwright
 ms-playwright/
+# Ignorar archivo de cookies
+session/session.json
