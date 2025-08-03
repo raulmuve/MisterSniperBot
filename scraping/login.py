@@ -1,7 +1,7 @@
 # scraping/login.py
 from playwright.sync_api import Page
 from utils.logger import logger
-from utils.session import save_storage_state
+from utils.storage import save_storage_state
 
 def hacer_login_sync(page: Page, email: str, password: str) -> None:
     page.goto(

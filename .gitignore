@@ -1,5 +1,5 @@
 # Ignorar entorno virtual
-venv/
+.venv/
 # Ignorar configuraciones locales
 .env
 *.env

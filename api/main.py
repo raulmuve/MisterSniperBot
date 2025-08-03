@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from scraping.browser import get_browser
-from scraping.login import hacer_login_sync
 from scraping.saldo import extraer_saldo_sync
 from scraping.alineacion import extraer_alineacion_sync, extraer_plantilla_sync
 from scraping.sofascore import extraer_partidos_ultimos_sync
@@ -18,7 +17,6 @@ if sys.platform.startswith("win"):
 
 load_dotenv()
 EMAIL = os.getenv("EMAIL")
-PASSWORD = os.getenv("PASSWORD")
 
 app = FastAPI()
 
@@ -26,14 +24,6 @@ app = FastAPI()
 def obtener_saldo():
     playwright, browser, page = get_browser()
     try:
-        # Siempre ir al dashboard tras abrir el navegador
-        page.goto("https://mister.mundodeportivo.com/market", timeout=10000)
-        
-        # Solo hacer login si no está ya logueado
-        if "login" in page.url or "sign-in" in page.url:
-            hacer_login_sync(page, EMAIL, PASSWORD)
-
-        # Ahora sí: extraer todo
         saldo_info = extraer_saldo_sync(page, EMAIL)
         alineacion = extraer_alineacion_sync(page)
         plantilla = extraer_plantilla_sync(page)
@@ -68,12 +58,10 @@ def obtener_puntos(nombre: str):
         browser.close()
         playwright.stop()
 
-
 @app.get("/mercado")
 def obtener_mercado():
     playwright, browser, page = get_browser()
     try:
-        hacer_login_sync(page, EMAIL, PASSWORD)
         mercado = extraer_mercado_sync(page)
         return JSONResponse(content={"mercado": mercado})
     except Exception as e:
